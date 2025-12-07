@@ -80,21 +80,40 @@ model_list:
       api_key: "os.environ/ANTHROPIC_API_KEY"
 
   # ---------------------------------------------------------------------------
-  # TOGETHER AI
+  # TOGETHER AI (Unified Access to Open Source)
   # ---------------------------------------------------------------------------
+  # Llama Models
   - model_name: "together/llama-3-70b"
     litellm_params:
       model: "together_ai/meta-llama/Llama-3-70b-chat-hf"
       api_key: "os.environ/TOGETHER_AI_API_KEY"
 
-  - model_name: "together/mixtral-8x7b"
+  # DeepSeek Models (via Together AI)
+  - model_name: "together/deepseek-coder"
     litellm_params:
-      model: "together_ai/mistralai/Mixtral-8x7B-Instruct-v0.1"
+      model: "together_ai/deepseek-ai/deepseek-coder-33b-instruct"
       api_key: "os.environ/TOGETHER_AI_API_KEY"
 
+  - model_name: "together/deepseek-chat"
+    litellm_params:
+      model: "together_ai/deepseek-ai/deepseek-llm-67b-chat"
+      api_key: "os.environ/TOGETHER_AI_API_KEY"
+
+  # Qwen Models (via Together AI)
   - model_name: "together/qwen-72b"
     litellm_params:
       model: "together_ai/Qwen/Qwen1.5-72B-Chat"
+      api_key: "os.environ/TOGETHER_AI_API_KEY"
+
+  - model_name: "together/qwen-110b"
+    litellm_params:
+      model: "together_ai/Qwen/Qwen1.5-110B-Chat"
+      api_key: "os.environ/TOGETHER_AI_API_KEY"
+
+  # Mixtral (via Together AI)
+  - model_name: "together/mixtral-8x22b"
+    litellm_params:
+      model: "together_ai/mistralai/Mixtral-8x22B-Instruct-v0.1"
       api_key: "os.environ/TOGETHER_AI_API_KEY"
 
   # ---------------------------------------------------------------------------
