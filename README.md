@@ -7,7 +7,7 @@ A secure, private, and locally hosted AI Gateway that mirrors OpenRouter functio
 - **100% Data Control**: Your chats and data stay on your local network (Unraid & Windows).
 - **Zero Latency**: Direct LAN connection between your API and your GPU.
 - **Hybrid Power**: Use local Ollama models for free inference, fallback to Cloud (OpenAI/Anthropic) only when needed.
-- **No Monthly Fees**: Self-hosted alternative to SaaS gateways.
+- **Enterprise Security**: Uses Cloudflare for **Reverse Proxy** and **WAF** (Web Application Firewall) protection.
 
 ## 🏗️ System Architecture
 
@@ -15,8 +15,9 @@ This system is designed to run on **Unraid** but connects to a powerful **Window
 
 ```mermaid
 graph TD
-    User[You / Web Browser] -->|https| CF[Cloudflare Tunnel]
-    CF -->|Secure Tunnel| Unraid[Unraid Server]
+    User[You / Web Browser] -->|https| CF[Cloudflare Edge]
+    CF -->|WAF & DDoS Protection| Tunnel[Cloudflared Tunnel]
+    Tunnel -->|Secure Connection| Unraid[Unraid Server]
     
     subgraph "Unraid Docker Stack"
         FE[React Frontend]
@@ -51,9 +52,12 @@ graph TD
 *   **Role**: Hosts the interface, manages users, and routes traffic.
 *   **Integration**: Connects to Windows via local IP (e.g., `192.168.1.50`).
 
-### 3. The Door (Cloudflare)
-*   **Software**: Cloudflared Container
-*   **Role**: Provides secure `https` access from anywhere without opening router ports.
+### 3. The Shield (Cloudflare)
+*   **Software**: Cloudflared Container + Cloudflare Zero Trust
+*   **Role**: 
+    *   **Reverse Proxy**: Routes `ai.yourdomain.com` to your local Docker containers without opening ports.
+    *   **WAF**: Protects your gateway from attacks, bots, and unauthorized access attempts.
+    *   **Authentication** (Optional): Can enforce Cloudflare Access login before reaching your app.
 
 ## 📦 Quick Start (Unraid)
 
@@ -77,7 +81,7 @@ graph TD
 
 4.  **Access**:
     *   **Local**: `http://<UNRAID_IP>:3002`
-    *   **Remote**: `https://ai.yourdomain.com`
+    *   **Remote**: `https://ai.yourdomain.com` (Protected by Cloudflare WAF)
 
 ## 🤖 Supported Models
 
@@ -94,4 +98,4 @@ graph TD
 ## 🔐 Security Features
 *   **Local-First**: All model routing happens inside your LAN.
 *   **Authentication**: Multi-user login system protected by JWT.
-*   **Tunneling**: No open ports on your router firewall.
+*   **Zero Trust**: No open ports on your router firewall; all ingress traffic is filtered through Cloudflare's WAF.
