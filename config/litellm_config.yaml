@@ -18,6 +18,42 @@ model_list:
       api_base: "os.environ/OLLAMA_API_BASE"
 
   # ---------------------------------------------------------------------------
+  # DEEPSEEK (Best for Coding)
+  # ---------------------------------------------------------------------------
+  - model_name: "deepseek-coder"
+    litellm_params:
+      model: "deepseek/deepseek-coder"
+      api_key: "os.environ/DEEPSEEK_API_KEY"
+
+  - model_name: "deepseek-chat"
+    litellm_params:
+      model: "deepseek/deepseek-chat"
+      api_key: "os.environ/DEEPSEEK_API_KEY"
+
+  # ---------------------------------------------------------------------------
+  # MOONSHOT (Kimi AI - Long Context)
+  # ---------------------------------------------------------------------------
+  - model_name: "kimi-128k"
+    litellm_params:
+      model: "openai/moonshot-v1-128k"
+      api_base: "https://api.moonshot.cn/v1"
+      api_key: "os.environ/MOONSHOT_API_KEY"
+
+  - model_name: "kimi-8k"
+    litellm_params:
+      model: "openai/moonshot-v1-8k"
+      api_base: "https://api.moonshot.cn/v1"
+      api_key: "os.environ/MOONSHOT_API_KEY"
+
+  # ---------------------------------------------------------------------------
+  # PERPLEXITY (Online/Search)
+  # ---------------------------------------------------------------------------
+  - model_name: "perplexity/sonar-large"
+    litellm_params:
+      model: "perplexity/sonar-large-online"
+      api_key: "os.environ/PERPLEXITY_API_KEY"
+
+  # ---------------------------------------------------------------------------
   # OPENAI
   # ---------------------------------------------------------------------------
   - model_name: "gpt-4o"

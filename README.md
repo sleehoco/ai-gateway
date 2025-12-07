@@ -95,6 +95,8 @@ graph TD
 *   `claude-3-5-sonnet` (Anthropic)
 *   `groq/llama3` (Groq - Super Fast)
 *   `hf/llama3-70b` (Hugging Face API)
+*   `deepseek-coder` (DeepSeek - Top Tier Coding)
+*   `kimi-128k` (Moonshot - Massive Context)
 
 ## 🏗️ Using Hugging Face
 
