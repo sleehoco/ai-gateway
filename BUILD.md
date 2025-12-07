@@ -2,13 +2,11 @@
 
 ## 📋 Prerequisites Checklist
 
-- [ ] Docker and Docker Compose installed
-- [ ] Git installed and configured
-- [ ] 11GB+ RAM available
-- [ ] 50GB+ free disk space
-- [ ] Windows Ollama running on 1080ti host
-- [ ] Network connectivity between Unraid and Windows
-- [ ] Cloud provider API keys (optional but recommended)
+- [ ] Docker and Docker Compose installed (Unraid)
+- [ ] 11GB+ RAM available (for smooth operation)
+- [ ] **Windows PC with 1080ti** (for local inference)
+- [ ] **Cloudflare Account** (for secure remote access)
+- [ ] Cloud provider API keys (optional: Together AI, OpenAI, etc.)
 
 ---
 
@@ -16,509 +14,122 @@
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/sleehoco/ai-gateway.git
-cd ai-gateway
+git clone https://github.com/sleehoco/ai-gateway.git /mnt/user/appdata/ai-gateway
+cd /mnt/user/appdata/ai-gateway
 
 # 2. Configure environment
 cp .env.example .env
-nano .env  # Edit with your settings
+nano .env  # IMPORTANT: Set OLLAMA_API_BASE and CLOUDFLARE_TUNNEL_TOKEN
 
 # 3. Build and start
-docker-compose build
-docker-compose up -d
+docker-compose up -d --build
 
 # 4. Verify deployment
 docker-compose ps
-curl http://localhost:3002
+# Access at https://ai.yourdomain.com (Remote) or http://<UNRAID_IP>:3002 (Local)
 ```
 
 ---
 
-## 📁 Directory Structure
+## 🏗️ System Architecture (Hybrid)
 
-```
-ai-gateway/
-├── docker-compose.yml              # Main orchestration
-├── .env.example                   # Environment template
-├── README.md                      # This file
-├── QUICKSTART.md                  # Quick start guide
-├── config/                        # Configuration files
-│   ├── litellm_config.yaml     # LiteLLM configuration
-│   ├── prometheus.yml           # Prometheus config
-│   └── grafana/
-│       └── provisioning/
-│           ├── datasources.yml
-│           └── dashboards/
-├── backend/                       # Node.js API server
-│   ├── Dockerfile
-│   ├── package.json
-│   ├── src/
-│   │   ├── routes/
-│   │   ├── middleware/
-│   │   ├── services/
-│   │   ├── utils/
-│   │   └── prisma/
-│   │       └── schema.prisma
-└── frontend/                      # React web interface
-    ├── Dockerfile
-    ├── package.json
-    ├── nginx.conf
-    └── src/
-        ├── components/
-        ├── pages/
-        ├── hooks/
-        ├── services/
-        └── types/
-```
+This system uses a **Hybrid Architecture** to balance cost, privacy, and power.
 
----
-
-## ⚙️ Configuration
-
-### 1. Environment Variables
-Copy `.env.example` to `.env` and update:
-
-```bash
-# Required - Update These
-OLLAMA_API_BASE=http://YOUR_WINDOWS_IP:11434
-POSTGRES_PASSWORD=your_secure_password
-LITELLM_MASTER_KEY=sk-your-secure-master-key
-JWT_SECRET=your-jwt-secret-key
-GRAFANA_PASSWORD=your-grafana-password
-
-# Optional - Add if you have
-OPENAI_API_KEY=sk-your-openai-key
-ANTHROPIC_API_KEY=sk-ant-your-anthropic-key
-GROQ_API_KEY=gsk_your-groq-key
-GEMINI_API_KEY=your-gemini-key
-TOGETHER_AI_API_KEY=your-together-ai-key
-```
-
-### 2. LiteLLM Configuration
-Edit `config/litellm_config.yaml`:
-
-```yaml
-# Update YOUR_WINDOWS_IP in all api_base entries
-api_base: "http://YOUR_WINDOWS_IP:11434"
-
-# Add your custom models
-model_list:
-  - model_name: "custom/my-model"
-    litellm_params:
-      model: "ollama/my-model"
-      api_base: "http://YOUR_WINDOWS_IP:11434"
-```
+1.  **Local Inference (Free)**: Small & Medium models (`llama3.2`, `mistral`, `dolphin`) run on your **Windows 1080ti**.
+2.  **Cloud Inference (Power)**: Massive models (`deepseek-v3`, `gpt-4o`) run via **Together AI** or **OpenAI**.
+3.  **Secure Access**: All traffic is routed through **Cloudflare Zero Trust** (WAF + Tunnel).
 
 ---
 
 ## 🐳 Docker Services
 
-### Core Services
 | Service | Port | Purpose | Health Check |
 |---------|-------|---------|---------------|
-| PostgreSQL | 5432 | Database | `curl localhost:5432` |
-| Redis | 6379 | Cache | `curl localhost:6379` |
-| LiteLLM | 4000 | AI Gateway | `curl localhost:4000/health` |
-| Backend | 3001 | API Server | `curl localhost:3001/health` |
-| Frontend | 3002 | Web Interface | `curl localhost:3002` |
-
-### Monitoring Services
-| Service | Port | Purpose | Access |
-|---------|-------|---------|--------|
-| Grafana | 3000 | Dashboards | http://localhost:3000 |
-| Prometheus | 9090 | Metrics | http://localhost:9090 |
-| Redis Commander | 8081 | Redis UI | http://localhost:8081 |
-| PgAdmin | 5050 | Database Admin | http://localhost:5050 |
+| `tunnel` | - | Cloudflare Secure Tunnel | Auto-restarts |
+| `litellm` | 4000 | AI Routing Engine | `/health` |
+| `backend` | 3001 | API & User Logic | `/health` |
+| `frontend` | 3002 | Web Dashboard | `/health` |
+| `postgres` | 5432 | User Database | `pg_isready` |
+| `redis` | 6379 | Caching | `redis-cli ping` |
 
 ---
 
-## 🔧 Build Commands
+## ⚙️ Configuration Guide
 
-### Initial Setup
+### 1. Environment Variables (`.env`)
+
 ```bash
-# Clone and configure
-git clone https://github.com/sleehoco/ai-gateway.git
-cd ai-gateway
-cp .env.example .env
-nano .env  # Edit your values
+# Windows Connectivity
+OLLAMA_API_BASE=http://192.168.1.50:11434  # <--- YOUR WINDOWS IP
 
-# Build all images
-docker-compose build --no-cache
+# Security
+LITELLM_MASTER_KEY=sk-secure-random-key
+CLOUDFLARE_TUNNEL_TOKEN=eyJh...           # <--- FROM CLOUDFLARE DASHBOARD
 
-# Start all services
-docker-compose up -d
-
-# Check status
-docker-compose ps
+# AI Providers
+TOGETHER_AI_API_KEY=...
+OPENAI_API_KEY=...
 ```
 
-### Development Mode
-```bash
-# Start with live logs
-docker-compose up
+### 2. Model Routing (`config/litellm_config.yaml`)
 
-# Rebuild specific service
-docker-compose up -d --build backend
+This file controls "who answers what".
 
-# Access container shell
-docker exec -it ai-gateway-backend sh
-```
-
-### Production Mode
-```bash
-# Production build
-docker-compose -f docker-compose.yml build
-
-# Deploy with scaling
-docker-compose up -d --scale backend=2
-
-# Background deployment
-nohup docker-compose up -d > /dev/null 2>&1 &
-```
+*   **`local/*`**: Routes to Windows PC.
+*   **`together/*`**: Routes to Together AI (DeepSeek, Qwen).
+*   **`gpt-4o`**: Routes to OpenAI.
 
 ---
 
-## 🔍 Verification Steps
+## 🔧 Maintenance Commands
 
-### 1. Service Health
+### Update System
 ```bash
-# Test all services
-curl http://localhost:4000/health && echo "✅ LiteLLM OK"
-curl http://localhost:3001/health && echo "✅ Backend OK"
-curl http://localhost:3002 && echo "✅ Frontend OK"
-curl http://localhost:3000 && echo "✅ Grafana OK"
+cd /mnt/user/appdata/ai-gateway
+git pull origin main
+docker-compose up -d --build
 ```
 
-### 2. Database Connection
+### Check Logs
 ```bash
-# Test PostgreSQL
-docker exec ai-gateway-postgres pg_isready -U ai_gateway -d ai_gateway
+# Gateway Engine
+docker logs -f ai-gateway-engine
 
-# Manual connection test
-docker exec -it ai-gateway-postgres psql -U ai_gateway -d ai_gateway -c "SELECT version();"
+# Web Backend
+docker logs -f ai-gateway-backend
+
+# Cloudflare Tunnel
+docker logs -f ai-gateway-tunnel
 ```
 
-### 3. Model Integration
+### Restart Specific Service
 ```bash
-# Test Ollama directly
-curl http://YOUR_WINDOWS_IP:11434/api/tags
-
-# Test through LiteLLM
-curl -X POST http://localhost:4000/v1/chat/completions \
-  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "ollama/llama3.2:3b",
-    "messages": [{"role": "user", "content": "Hello!"}]
-  }'
+docker-compose restart litellm
 ```
-
-### 4. Web Interface Functionality
-```bash
-# Test API endpoints
-curl -X POST http://localhost:3001/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"username": "admin", "email": "admin@test.com", "password": "test123"}'
-
-# Test model listing
-curl -X GET http://localhost:3001/api/models \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
-
----
-
-## 🌐 Access URLs
-
-After successful deployment:
-
-| Service | URL | Credentials |
-|---------|------|------------|
-| Web Interface | http://localhost:3002 | Register first user |
-| API Documentation | http://localhost:3001/api-docs | JWT token required |
-| LiteLLM API | http://localhost:4000/v1 | Master key required |
-| Grafana | http://localhost:3000 | admin / your_grafana_password |
-| PgAdmin | http://localhost:5050 | admin@yourdomain.com / your_pgadmin_password |
-| Redis Commander | http://localhost:8081 | No auth required |
-| Prometheus | http://localhost:9090 | No auth required |
 
 ---
 
 ## 🚨 Troubleshooting
 
-### Common Issues & Solutions
+### "Unraid can't talk to Windows"
+*   **Check IP**: Is `OLLAMA_API_BASE` correct in `.env`?
+*   **Check Firewall**: Did you run the PowerShell command to open port 11434 on Windows?
+*   **Test**: Run `curl http://192.168.1.50:11434` from Unraid terminal.
 
-#### Port Conflicts
-```bash
-# Check what's using ports
-sudo netstat -tulpn | grep -E ":(3000|3001|3002|4000|5432)"
+### "Cloudflare Tunnel is down"
+*   Check if the `tunnel` container is running.
+*   Verify `CLOUDFLARE_TUNNEL_TOKEN` matches the one in your Dashboard.
 
-# Solution: Change ports in docker-compose.yml
-```
-
-#### Database Connection Issues
-```bash
-# Check database logs
-docker-compose logs postgres
-
-# Reset database
-docker-compose down -v
-docker-compose up -d postgres
-
-# Manual database creation
-docker exec ai-gateway-postgres createdb -U ai_gateway ai_gateway
-```
-
-#### Ollama Connection Issues
-```bash
-# Test direct connection
-curl http://YOUR_WINDOWS_IP:11434/api/tags
-
-# Check Windows Firewall
-# On Windows: Settings > Network > Windows Firewall > Allow app
-
-# Restart Ollama service
-# Windows: Services > Ollama > Restart
-```
-
-#### Memory Issues
-```bash
-# Check resource usage
-docker stats
-
-# Increase swap space
-sudo fallocate -l 2G /swapfile
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
-
-# Add to /etc/fstab
-echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-```
-
-#### Service Won't Start
-```bash
-# Check logs for errors
-docker-compose logs [service-name]
-
-# Check configuration
-docker-compose config
-
-# Force recreate
-docker-compose up -d --force-recreate [service-name]
-```
+### "OpenCode can't connect"
+*   Ensure you are using `https://ai.yourdomain.com/v1` as the base URL.
+*   Ensure your `api_key` matches `LITELLM_MASTER_KEY`.
 
 ---
 
-## 📈 Performance Optimization
+## 🔒 Security Best Practices
 
-### Database Performance
-```bash
-# Connection pooling in .env
-DATABASE_URL=postgresql://ai_gateway:password@postgres:5432/ai_gateway?connection_limit=20&pool_timeout=30
+1.  **Never expose ports 4000/3001** on your router. Only use Cloudflare.
+2.  **Rotate Keys**: Change `LITELLM_MASTER_KEY` periodically.
+3.  **WAF Rules**: Enable "Bot Fight Mode" in Cloudflare.
 
-# PostgreSQL optimization
-docker exec ai-gateway-postgres psql -U ai_gateway -d ai_gateway -c "
-ALTER SYSTEM SET shared_buffers = 256MB;
-ALTER SYSTEM SET effective_cache_size = 1GB;
-VACUUM ANALYZE;
-"
-```
-
-### Application Performance
-```bash
-# Add Redis caching
-# Already configured in docker-compose.yml
-
-# Enable compression
-# Already configured in nginx.conf
-
-# Resource limits in docker-compose.yml
-services:
-  backend:
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: '1.0'
-```
-
----
-
-## 🔒 Security Hardening
-
-### 1. Update Secrets
-```bash
-# Generate secure passwords
-openssl rand -base64 32  # JWT secret
-openssl rand -base64 16  # Database password
-
-# Update .env file
-nano .env
-```
-
-### 2. Network Security
-```bash
-# Firewall rules
-sudo ufw allow 22/tcp    # SSH
-sudo ufw allow 80/tcp    # HTTP
-sudo ufw allow 443/tcp   # HTTPS
-sudo ufw deny 4000/tcp  # Restrict LiteLLM to local only
-sudo ufw deny 3001/tcp  # Restrict backend to local only
-sudo ufw enable
-
-# Docker network isolation
-# Already configured with custom bridge network
-```
-
-### 3. Application Security
-```bash
-# Rate limiting
-# Already configured in litellm_config.yaml
-
-# Input validation
-# Already implemented in backend middleware
-
-# HTTPS with Cloudflare
-# Configure Cloudflare tunnel for production
-cloudflared tunnel create ai-gateway
-cloudflared tunnel route dns ai-gateway.yourdomain.com localhost:3002
-```
-
----
-
-## 📊 Monitoring Setup
-
-### Grafana Dashboards
-1. Access http://localhost:3000
-2. Login with admin credentials
-3. Import pre-configured dashboards:
-   - AI Gateway Overview
-   - Model Performance Metrics
-   - User Analytics Dashboard
-   - System Health Monitoring
-
-### Prometheus Metrics
-1. Access http://localhost:9090
-2. Check targets: http://localhost:9090/targets
-3. View metrics: http://localhost:9090/metrics
-4. Set up alerting rules
-
-### Custom Alerts
-```yaml
-# Create config/alert_rules.yml
-groups:
-  - name: ai_gateway_alerts
-    rules:
-      - alert: HighLatency
-        expr: avg(litellm_request_duration_seconds) > 5
-        for: 2m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High latency detected"
-      
-      - alert: HighErrorRate
-        expr: rate(litellm_requests_failed_total[5m]) > 0.1
-        for: 1m
-        labels:
-          severity: critical
-        annotations:
-          summary: "High error rate detected"
-```
-
----
-
-## 🔄 Backup & Recovery
-
-### Automated Backup
-```bash
-# Create backup script
-cat > backup.sh << 'EOF'
-#!/bin/bash
-DATE=$(date +%Y%m%d_%H%M%S)
-BACKUP_DIR="$HOME/ai-gateway/backups"
-mkdir -p $BACKUP_DIR
-
-# Backup configurations
-tar -czf "$BACKUP_DIR/config_$DATE.tar.gz" .env config/
-
-# Backup database
-docker exec ai-gateway-postgres pg_dump -U ai_gateway ai_gateway > "$BACKUP_DIR/postgres_$DATE.sql"
-
-# Cleanup old backups (keep 7 days)
-find $BACKUP_DIR -name "*.tar.gz" -mtime +7 -delete
-find $BACKUP_DIR -name "*.sql" -mtime +7 -delete
-
-echo "Backup completed: $DATE"
-EOF
-
-chmod +x backup.sh
-
-# Schedule daily backups
-crontab -e
-# Add: 0 2 * * * /path/to/ai-gateway/backup.sh
-```
-
-### Disaster Recovery
-```bash
-# Complete system reset
-docker-compose down -v
-docker-compose up -d
-
-# Restore from backup
-docker exec -i ai-gateway-postgres psql -U ai_gateway -d ai_gateway < backup_20241206.sql
-
-# Verify recovery
-curl http://localhost:3001/health
-```
-
----
-
-## 📚 Documentation
-
-### API Documentation
-- **Swagger UI**: http://localhost:3001/api-docs
-- **OpenAPI Spec**: http://localhost:3001/api/docs
-- **Model Endpoints**: http://localhost:4000/v1/models
-
-### User Documentation
-1. **Registration**: Create account at http://localhost:3002/register
-2. **Login**: Use credentials at http://localhost:3002/login
-3. **Model Selection**: Configure preferred models in dashboard
-4. **API Keys**: Generate personal API keys in settings
-5. **Usage Analytics**: Monitor consumption in analytics section
-
----
-
-## ✅ Success Criteria
-
-Your AI Gateway is fully operational when:
-
-- [ ] All Docker containers running: `docker-compose ps`
-- [ ] Web interface accessible: http://localhost:3002
-- [ ] API backend healthy: `curl http://localhost:3001/health`
-- [ ] LiteLLM responding: `curl http://localhost:4000/health`
-- [ ] Database connected: Check backend logs
-- [ ] Ollama models listed: Test through LiteLLM
-- [ ] Monitoring active: Grafana dashboards populated
-- [ ] Users can register and login
-- [ ] Chat interface functional
-- [ ] Model management working
-
----
-
-## 🎉 Next Steps
-
-1. **Customize**: Add your own models and routing rules
-2. **Scale**: Add more backend instances based on load
-3. **Monitor**: Set up alerts and notifications
-4. **Secure**: Configure HTTPS with Cloudflare tunnel
-5. **Optimize**: Fine-tune performance based on usage patterns
-
-**Support Resources**:
-- **Logs**: `docker-compose logs -f [service-name]`
-- **Health Checks**: Service `/health` endpoints
-- **Documentation**: In-app help system
-- **Community**: GitHub issues and discussions
-
-Your complete AI gateway system is ready! 🚀
+Your AI Gateway is built for production! 🚀
