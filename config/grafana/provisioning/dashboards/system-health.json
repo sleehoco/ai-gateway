@@ -1,0 +1,264 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "reduceOptions": {
+          "values": false,
+          "calcs": false,
+          "tooltips": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "expr": "up{job=\"litellm\"}",
+          "interval": "",
+          "legendFormat": "LiteLLM",
+          "refId": "A",
+          "datasource": "Prometheus"
+        },
+        {
+          "expr": "up{job=\"ai-gateway-backend\"}",
+          "interval": "",
+          "legendFormat": "Backend",
+          "refId": "B",
+          "datasource": "Prometheus"
+        },
+        {
+          "expr": "up{job=\"postgres\"}",
+          "interval": "",
+          "legendFormat": "PostgreSQL",
+          "refId": "C",
+          "datasource": "Prometheus"
+        },
+        {
+          "expr": "up{job=\"redis\"}",
+          "interval": "",
+          "legendFormat": "Redis",
+          "refId": "D",
+          "datasource": "Prometheus"
+        },
+        {
+          "expr": "up{job=\"ai-gateway-frontend\"}",
+          "interval": "",
+          "legendFormat": "Frontend",
+          "refId": "E",
+          "datasource": "Prometheus"
+        }
+      ],
+      "title": "Service Health Status",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "reduceOptions": {
+          "values": false,
+          "calcs": false,
+          "tooltips": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(litellm_requests_total)",
+          "interval": "",
+          "legendFormat": "Total Requests",
+          "refId": "A",
+          "datasource": "Prometheus"
+        },
+        {
+          "expr": "sum(litellm_tokens_total)",
+          "interval": "",
+          "legendFormat": "Total Tokens",
+          "refId": "B",
+          "datasource": "Prometheus"
+        },
+        {
+          "expr": "sum(litellm_cost_total)",
+          "interval": "",
+          "legendFormat": "Total Cost ($)",
+          "refId": "C",
+          "datasource": "Prometheus"
+        },
+        {
+          "expr": "avg(litellm_request_duration_seconds)",
+          "interval": "",
+          "legendFormat": "Avg Latency (s)",
+          "refId": "D",
+          "datasource": "Prometheus"
+        }
+      ],
+      "title": "System Metrics",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "reduceOptions": {
+          "values": false,
+          "calcs": false,
+          "tooltips": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litellm_requests_total[5m]))",
+          "interval": "",
+          "legendFormat": "Requests/sec",
+          "refId": "A",
+          "datasource": "Prometheus"
+        },
+        {
+          "expr": "sum(rate(litellm_tokens_total[5m]))",
+          "interval": "",
+          "legendFormat": "Tokens/sec",
+          "refId": "B",
+          "datasource": "Prometheus"
+        }
+      ],
+      "title": "Real-time Metrics",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 27,
+  "style": "dark",
+  "tags": [
+    "ai-gateway",
+    "system",
+    "health"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-5m",
+    "to": "now"
+  },
+  "timezone": "",
+  "title": "System Health"
+}
