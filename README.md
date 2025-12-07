@@ -94,6 +94,18 @@ graph TD
 *   `gpt-4o` (OpenAI)
 *   `claude-3-5-sonnet` (Anthropic)
 *   `groq/llama3` (Groq - Super Fast)
+*   `hf/llama3-70b` (Hugging Face API)
+
+## 🏗️ Using Hugging Face
+
+You can use Hugging Face in two ways with this gateway:
+
+1.  **Cloud API (Configured)**: Add your `HUGGINGFACE_API_KEY` to `.env`. You can then route requests to `hf/llama3-70b` or any model on the Hugging Face Inference API.
+2.  **Local Imports (Ollama)**: Find any GGUF model on Hugging Face, download it, and create a Modelfile in Ollama on your Windows machine.
+    ```bash
+    # Example: Importing a custom GGUF from Hugging Face to Ollama
+    ollama pull hf.co/bartowski/Llama-3.2-3B-Instruct-GGUF
+    ```
 
 ## 🔐 Security Features
 *   **Local-First**: All model routing happens inside your LAN.
