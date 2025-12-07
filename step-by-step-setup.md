@@ -1,116 +1,144 @@
-# AI Gateway: The Complete Setup Guide
+# AI Gateway: Master Deployment Guide
 
-This guide describes how to build a distributed AI system across three specific environments:
-1.  **Windows PC** (The Brain): Hosts the GPU and Ollama models.
-2.  **Cloudflare** (The Security): Provides secure remote access without port forwarding.
-3.  **Unraid Server** (The Host): Runs the web application and gateway logic via Docker.
+This guide describes how to build a **Hybrid AI Gateway** that mirrors OpenRouter functionality. It combines your local **Windows 1080ti GPU** with cloud providers like **Together AI** and **OpenAI**, securely exposed via **Cloudflare**.
 
 ---
 
-## 🛑 Phase 1: Windows PC Setup (The "Brain")
-*Perform these steps on your Windows machine with the 1080ti.*
+## 🏗️ System Architecture
 
-**Why?** By default, Ollama only listens to itself (`localhost`). We must force it to listen to the network so Unraid can talk to it.
+1.  **Windows PC** ("The Brain"): Runs local, uncensored models (Dolphin, Mistral) on your 1080ti via Ollama.
+2.  **Unraid Server** ("The Host"): Runs the Gateway (LiteLLM), Web Interface, and Database via Docker.
+3.  **Cloudflare** ("The Shield"): Provides secure HTTPS access and WAF protection.
+4.  **OpenCode** ("The Client"): Connects securely to your gateway for coding assistance.
+
+---
+
+## 🛑 Phase 1: Windows PC Setup (Local Inference)
+*Perform these steps on your Windows machine with the 1080ti.*
 
 1.  **Open PowerShell as Administrator.**
 2.  **Allow Network Access:**
-    Run this command to tell Ollama to listen on all network interfaces:
     ```powershell
     setx OLLAMA_HOST "0.0.0.0:11434" /M
     ```
 3.  **Open Windows Firewall:**
-    Run this command to allow traffic on port 11434:
     ```powershell
     netsh advfirewall firewall add rule name="Ollama" dir=in action=allow protocol=TCP localport=11434
     ```
-4.  **Restart Ollama:**
-    *   Find the Ollama icon in your system tray (bottom right).
-    *   Right-click -> **Quit**.
-    *   Start Ollama again from the Start Menu.
-5.  **Get Your IP Address:**
-    *   Run `ipconfig` in PowerShell.
-    *   Note your **IPv4 Address** (e.g., `192.168.1.50`). You will need this later.
+4.  **Restart Ollama:** Quit from the system tray and restart.
+5.  **Get IP Address:** Run `ipconfig` and note the IPv4 address (e.g., `192.168.1.50`).
 
 ---
 
-## ☁️ Phase 2: Cloudflare Setup (The "Door")
+## ☁️ Phase 2: Cloudflare Setup (Security)
 *Perform these steps in your Web Browser.*
 
-**Why?** We will use a "Tunnel" to securely expose your web interface to the internet. This is safer than opening ports on your router.
-
-1.  Log in to the **Cloudflare Zero Trust Dashboard**.
-2.  Go to **Networks > Tunnels**.
-3.  Click **Create a Tunnel**.
-    *   Select **Cloudflared**.
-    *   Name it: `ai-gateway`.
-4.  **Important:** You will see a screen with installation commands. **Ignore the install commands.**
-    *   Look for the token string: `eyJhIjoi...`
-    *   **COPY THIS TOKEN.** This is your `TUNNEL_TOKEN`.
-5.  **Configure Public Hostname (Routing):**
-    *   **Public Hostname:** `ai.yourdomain.com` (or whatever you prefer).
-    *   **Service:** `HTTP` -> `ai-gateway-frontend:3000`
-    *   *Note: We point it to the docker container name, not localhost.*
+1.  Log in to **Cloudflare Zero Trust**.
+2.  Go to **Networks > Tunnels** and create a tunnel named `ai-gateway`.
+3.  **Copy the Token:** Save the `eyJh...` token string.
+4.  **Configure Public Hostname:**
+    *   **Domain:** `ai.yourdomain.com`
+    *   **Service:** `HTTP` -> `ai-gateway-frontend:3000` (Routes to Web UI)
+    *   **Add Path:** `/v1` -> `http://ai-gateway-engine:4000` (Routes API calls to LiteLLM)
 
 ---
 
-## 🐳 Phase 3: Development & Upload (The "Code")
-*Perform these steps on your Local Machine (where you are reading this).*
+## 🖥️ Phase 3: Unraid Deployment (The Core)
+*Perform these steps on your Unraid Server terminal.*
 
-We will create the web application source code and upload it to GitHub so Unraid can pull it down.
+### 1. Setup Directory
+```bash
+mkdir -p /mnt/user/appdata/ai-gateway
+cd /mnt/user/appdata/ai-gateway
+```
 
-### 1. Create the Repository Structure
-*(Done automatically by the build script)*
+### 2. Clone Repository
+```bash
+git clone https://github.com/sleehoco/ai-gateway.git .
+```
 
-### 2. Upload to GitHub
-Run the provided upload script to push the code to `https://github.com/sleehoco/ai-gateway`.
+### 3. Configure Environment
+Copy the template and edit it:
+```bash
+cp .env.example .env
+nano .env
+```
 
----
+**Critical Settings to Change:**
+*   `OLLAMA_API_BASE`: `http://192.168.1.50:11434` (Your Windows IP)
+*   `CLOUDFLARE_TUNNEL_TOKEN`: Paste your `eyJh...` token.
+*   `LITELLM_MASTER_KEY`: Set a strong password (sk-...) for OpenCode authentication.
+*   `TOGETHER_AI_API_KEY`: Required for DeepSeek V3/R1.
+*   `HUGGINGFACE_API_KEY`: Optional for extra models.
 
-## 🖥️ Phase 4: Unraid Deployment (The "Body")
-*Perform these steps on your Unraid Server via Terminal/SSH.*
-
-1.  **Navigate to AppData:**
-    ```bash
-    cd /mnt/user/appdata
-    ```
-2.  **Clone the Repository:**
-    ```bash
-    git clone https://github.com/sleehoco/ai-gateway.git
-    cd ai-gateway
-    ```
-3.  **Configure Environment:**
-    Copy the template and edit it:
-    ```bash
-    cp .env.example .env
-    nano .env
-    ```
-    **You must change these lines:**
-    *   `OLLAMA_API_BASE=http://<YOUR_WINDOWS_IP>:11434` (Use the IP from Phase 1).
-    *   `CLOUDFLARE_TUNNEL_TOKEN=<YOUR_TOKEN_EY...>` (Use the token from Phase 2).
-    *   `LITELLM_MASTER_KEY=sk-your-secret-key` (Make one up).
-
-4.  **Build and Launch:**
-    This command compiles the web app and starts the containers:
-    ```bash
-    docker-compose up -d --build
-    ```
-
-5.  **Verify:**
-    *   **Internal Test:** Open `http://<UNRAID_IP>:3002` in your browser.
-    *   **External Test:** Open `https://ai.yourdomain.com` (from Cloudflare setup).
+### 4. Build and Launch
+```bash
+docker-compose up -d --build
+```
 
 ---
 
-## 🛠️ Troubleshooting
+## 💻 Phase 4: Client Configuration (OpenCode)
+*Perform these steps on your Laptop/Dev Machine.*
 
-**"Unraid can't connect to Windows Ollama"**
-*   From Unraid terminal, run: `curl http://<WINDOWS_IP>:11434`
-*   If it hangs: Check Windows Firewall (Phase 1, Step 3).
-*   If it says "Connection refused": Check `OLLAMA_HOST` setting (Phase 1, Step 2) and restart Ollama.
+To use your gateway with **OpenCode** securely:
 
-**"Cloudflare Tunnel isn't working"**
-*   Check container logs: `docker logs ai-gateway-tunnel`
-*   Ensure the `TUNNEL_TOKEN` in `.env` is correct and has no spaces/quotes.
+1.  **Locate/Create Config:** `~/.opencode/config.json`
+2.  **Add Connection Details:**
 
-**"Web App shows 'Build Failed'"**
-*   Unraid needs internet access to download Node.js packages during the build. Check your server's DNS settings.
+```json
+{
+  "provider": "openai",
+  "api_base": "https://ai.yourdomain.com/v1",
+  "api_key": "YOUR_LITELLM_MASTER_KEY",
+  "model": "together/deepseek-v3",
+  "models": [
+    "together/deepseek-v3",
+    "together/deepseek-r1",
+    "gpt-4o",
+    "local/dolphin"
+  ]
+}
+```
+
+---
+
+## 🤖 Available Models
+
+### 🚀 High-Speed / Cloud
+| Model Name | Provider | Best For |
+| :--- | :--- | :--- |
+| `together/deepseek-v3` | Together AI | **Best Overall** (Coding/Reasoning) |
+| `together/deepseek-r1` | Together AI | **Reasoning** (Math/Logic) |
+| `together/llama-3-70b` | Together AI | General Purpose |
+| `groq/llama3-8b` | Groq | **Instant** Responses |
+
+### 🏠 Local / Uncensored (Windows 1080ti)
+| Model Name | Provider | Best For |
+| :--- | :--- | :--- |
+| `local/dolphin` | Local Ollama | **Unfiltered** / Creative |
+| `local/mistral` | Local Ollama | General Local Tasks |
+
+### 🌐 Big Tech Fallback
+| Model Name | Provider | Best For |
+| :--- | :--- | :--- |
+| `gpt-4o` | OpenAI | Complex Instructions |
+| `claude-3-5-sonnet` | Anthropic | Nuanced Writing |
+
+---
+
+## 🛠️ Maintenance & Updates
+
+**To update your gateway with new code/models:**
+
+```bash
+cd /mnt/user/appdata/ai-gateway
+git pull origin main
+docker-compose up -d --build
+```
+
+**To check logs:**
+```bash
+docker logs -f ai-gateway-backend
+docker logs -f ai-gateway-engine
+```
