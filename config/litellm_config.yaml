@@ -89,6 +89,16 @@ model_list:
       api_key: "os.environ/TOGETHER_AI_API_KEY"
 
   # DeepSeek Models (via Together AI)
+  - model_name: "together/deepseek-v3"
+    litellm_params:
+      model: "together_ai/deepseek-ai/DeepSeek-V3"
+      api_key: "os.environ/TOGETHER_AI_API_KEY"
+
+  - model_name: "together/deepseek-r1"
+    litellm_params:
+      model: "together_ai/deepseek-ai/DeepSeek-R1"
+      api_key: "os.environ/TOGETHER_AI_API_KEY"
+
   - model_name: "together/deepseek-coder"
     litellm_params:
       model: "together_ai/deepseek-ai/deepseek-coder-33b-instruct"
