@@ -1,223 +1,116 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
+  # ---------------------------------------------------------------------------
+  # 1. CORE INFRASTRUCTURE
+  # ---------------------------------------------------------------------------
   postgres:
     image: postgres:15-alpine
     container_name: ai-gateway-postgres
     environment:
-      POSTGRES_DB: ai_gateway
-      POSTGRES_USER: ai_gateway
+      POSTGRES_DB: litellm
+      POSTGRES_USER: litellm
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     networks:
-      - ai-gateway-network
+      - ai-net
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ai_gateway -d ai_gateway"]
+      test: ["CMD-SHELL", "pg_isready -U litellm -d litellm"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Redis Cache
   redis:
     image: redis:7-alpine
     container_name: ai-gateway-redis
     volumes:
-      - redis_data:/data
+      - redis-data:/data
     networks:
-      - ai-gateway-network
+      - ai-net
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
 
-  # LiteLLM Gateway
+  # ---------------------------------------------------------------------------
+  # 2. AI GATEWAY (LiteLLM)
+  # ---------------------------------------------------------------------------
   litellm:
     image: ghcr.io/berriai/litellm:main-latest
-    container_name: ai-gateway-litellm
+    container_name: ai-gateway-engine
     command: --config /app/config.yaml --detailed_debug
     volumes:
       - ./config/litellm_config.yaml:/app/config.yaml
-      - ./config/custom_auth.py:/app/custom_auth.py
-      - litellm_logs:/app/logs
     ports:
       - "4000:4000"
     networks:
-      - ai-gateway-network
+      - ai-net
     depends_on:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
+        condition: service_started
     environment:
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=postgresql://litellm:${POSTGRES_PASSWORD}@postgres:5432/litellm
       - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
-      - LITELLM_SALT_KEY=${LITELLM_SALT_KEY}
-      - REDIS_URL=redis://redis:6379
-      # Local Ollama
       - OLLAMA_API_BASE=${OLLAMA_API_BASE}
-      # Cloud Providers
+      # Provider Keys
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - TOGETHER_AI_API_KEY=${TOGETHER_AI_API_KEY}
       - GROQ_API_KEY=${GROQ_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - TOGETHER_AI_API_KEY=${TOGETHER_AI_API_KEY}
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
-  # Backend API
+  # ---------------------------------------------------------------------------
+  # 3. WEB APPLICATION
+  # ---------------------------------------------------------------------------
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
     container_name: ai-gateway-backend
-    ports:
-      - "3001:3001"
-    networks:
-      - ai-gateway-network
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      litellm:
-        condition: service_healthy
-    environment:
-      - NODE_ENV=production
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=redis://redis:6379
-      - LITELLM_URL=http://litellm:4000
-      - LITELLM_API_KEY=${LITELLM_MASTER_KEY}
-      - JWT_SECRET=${JWT_SECRET}
-      - MAX_USERS=${MAX_USERS:-5}
-      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3002}
-      # Local Ollama
-      - OLLAMA_API_BASE=${OLLAMA_API_BASE}
-      # Cloud Providers
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - TOGETHER_AI_API_KEY=${TOGETHER_AI_API_KEY}
-    volumes:
-      - backend_logs:/app/logs
-      - uploads_data:/app/uploads
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Frontend Web Interface
-  frontend:
     build:
-      context: ./frontend
+      context: ./ai-gateway-web/backend
       dockerfile: Dockerfile
+    environment:
+      - PORT=3001
+      - DATABASE_URL=postgresql://litellm:${POSTGRES_PASSWORD}@postgres:5432/litellm
+      - JWT_SECRET=${JWT_SECRET}
+      - LITELLM_URL=http://litellm:4000
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
+    networks:
+      - ai-net
+    depends_on:
+      - litellm
+    restart: unless-stopped
+
+  frontend:
     container_name: ai-gateway-frontend
+    build:
+      context: ./ai-gateway-web/frontend
+      dockerfile: Dockerfile
     ports:
       - "3002:3000"
     networks:
-      - ai-gateway-network
+      - ai-net
     depends_on:
-      backend:
-        condition: service_healthy
-    environment:
-      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:3001}
-      - REACT_APP_WS_URL=${REACT_APP_WS_URL:-ws://localhost:3001}
-      - REACT_APP_MAX_USERS=${MAX_USERS:-5}
-      - REACT_APP_VERSION=${APP_VERSION:-1.0.0}
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Prometheus Monitoring
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: ai-gateway-prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--storage.tsdb.retention.time=200h'
-      - '--web.enable-lifecycle'
-    networks:
-      - ai-gateway-network
+      - backend
     restart: unless-stopped
 
-  # Grafana Dashboard
-  grafana:
-    image: grafana/grafana:latest
-    container_name: ai-gateway-grafana
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
-      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
-      - GF_SERVER_DOMAIN=localhost
-      - GF_SERVER_ROOT_URL=http://localhost:3000
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./config/grafana/provisioning:/etc/grafana/provisioning
-    networks:
-      - ai-gateway-network
-    depends_on:
-      prometheus:
-        condition: service_healthy
+  # ---------------------------------------------------------------------------
+  # 4. EXTERNAL ACCESS
+  # ---------------------------------------------------------------------------
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: ai-gateway-tunnel
     restart: unless-stopped
-
-  # Redis Commander (Management UI)
-  redis-commander:
-    image: rediscommander/redis-commander:latest
-    container_name: ai-gateway-redis-commander
-    ports:
-      - "8081:8081"
+    command: tunnel run
     environment:
-      - REDIS_HOSTS=local:redis:6379
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
     networks:
-      - ai-gateway-network
-    depends_on:
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
+      - ai-net
 
 networks:
-  ai-gateway-network:
+  ai-net:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
-          gateway: 172.20.0.1
 
 volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
-  litellm_logs:
-    driver: local
-  backend_logs:
-    driver: local
-  uploads_data:
-    driver: local
-  prometheus_data:
-    driver: local
-  grafana_data:
-    driver: local
+  postgres-data:
+  redis-data:
