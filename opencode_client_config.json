@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "api_base": "https://ai.yourdomain.com/v1",
+  "api_key": "sk-your-secure-master-key-here",
+  "model": "together/deepseek-v3",
+  "models": [
+    "together/deepseek-v3",
+    "gpt-4o",
+    "local/dolphin"
+  ]
+}
